@@ -1,0 +1,59 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	firebase "firebase.google.com/go"
+	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
+)
+
+func main() {
+	// Replace with your Firebase project ID and path to the service account key
+	projectID := "my-first-project-3c6af"
+	serviceAccountKeyPath := "./key.json"
+
+	// Initialize the Firebase app
+	ctx := context.Background()
+	opt := option.WithCredentialsFile(serviceAccountKeyPath)
+	app, err := firebase.NewApp(ctx, &firebase.Config{
+		ProjectID: projectID,
+	}, opt)
+	if err != nil {
+		log.Fatalf("Failed to initialize Firebase app: %v\n", err)
+	}
+
+	// Initialize the Firestore client
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		log.Fatalf("Failed to create Firestore client: %v\n", err)
+	}
+	defer client.Close()
+
+	// Retrieve all documents in the "events" collection
+	iter := client.Collection("events").Documents(ctx)
+	defer iter.Stop()
+
+	var solvedValues []interface{}
+	for {
+		doc, err := iter.Next()
+		if err != nil {
+			if err == iterator.Done {
+				break
+			}
+			log.Fatalf("Failed to iterate over documents: %v\n", err)
+		}
+
+		// fmt.Printf("Retrieved document with ID: %s\n", doc.Ref.ID)
+		data := doc.Data()
+		if val, ok := data["solved"]; ok {
+			// fmt.Printf("Found 'solved' field with value %v\n", val)
+			solvedValues = append(solvedValues, val)
+		} else {
+			fmt.Printf("Document %s does not have a 'solved' field\n", doc.Ref.ID)
+		}
+	}
+	fmt.Println(solvedValues...)
+}
